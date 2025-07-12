@@ -15,12 +15,14 @@ import { Loader2 } from 'lucide-react';
 import { generateSummary } from '@/lib/summaryGenerator';
 import { translateToUrdu } from '@/lib/urduTranslator';
 
+import { saveToSupabase } from '@/lib/saveToSupabase';
+
 export default function Home() {
   const [url, setUrl] = useState('');
   const [summary, setSummary] = useState('');
   const [urduSummary, setUrduSummary] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // 🆕
+  const [loading, setLoading] = useState(false); 
 
   const handleSummarise = async () => {
     if (!url.trim()) {
@@ -31,7 +33,7 @@ export default function Home() {
     setError('');
     setSummary('');
     setUrduSummary('');
-    setLoading(true); // 🆕
+    setLoading(true);
 
     try {
       const res = await fetch('/api/scrape', {
@@ -46,17 +48,31 @@ export default function Home() {
 
       if (data.error) {
         setError("❌ Unable to fetch blog content.");
-        setLoading(false); // 🆕
+        setLoading(false);
         return;
       }
 
       const blogText = data.content;
+
+      // Save full text to MongoDB
+    await fetch('/api/saveToMongo', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ url, content: blogText })
+});
+
       const summaryResult = generateSummary(blogText);
       setSummary(summaryResult);
+      
+       // Save to Supabase
+    await saveToSupabase(url, summaryResult);
+
     } catch {
       setError("⚠️ Something went wrong. Please try again.");
     } finally {
-      setLoading(false); // 🆕
+      setLoading(false);
     }
   };
 
