@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 import { generateSummary } from '@/lib/summaryGenerator';
 import { translateToUrdu } from '@/lib/urduTranslator';
@@ -19,17 +20,44 @@ export default function Home() {
   const [summary, setSummary] = useState('');
   const [urduSummary, setUrduSummary] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // 🆕
 
-  const handleSummarise = () => {
+  const handleSummarise = async () => {
     if (!url.trim()) {
       setError("⛔ Please enter a blog URL before summarizing.");
       return;
     }
 
     setError('');
-    const fakeSummary = generateSummary("FAKE FULL TEXT");
-    setSummary(fakeSummary);
+    setSummary('');
     setUrduSummary('');
+    setLoading(true); // 🆕
+
+    try {
+      const res = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setError("❌ Unable to fetch blog content.");
+        setLoading(false); // 🆕
+        return;
+      }
+
+      const blogText = data.content;
+      const summaryResult = generateSummary(blogText);
+      setSummary(summaryResult);
+    } catch {
+      setError("⚠️ Something went wrong. Please try again.");
+    } finally {
+      setLoading(false); // 🆕
+    }
   };
 
   const handleTranslate = () => {
@@ -80,9 +108,17 @@ export default function Home() {
             <div className="flex gap-4 w-full">
               <Button
                 onClick={handleSummarise}
+                disabled={loading}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black flex-1"
               >
-                Summarize
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Summarize'
+                )}
               </Button>
               <Button
                 onClick={handleTranslate}
